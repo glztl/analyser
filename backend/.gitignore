@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+.env
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+
+
+# Node / React
+node_modules/
+/dist
+/npm-debug.log*
+.yarn-integrity
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project Specific
+# 严禁上传真实的环境变量文件！
+backend/.env
+frontend/.env
+frontend/.env.local
+
+# 数据文件
+backend/data/
+*.csv
+*.xlsx

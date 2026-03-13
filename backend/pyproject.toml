@@ -1,0 +1,20 @@
+[project]
+name = "analyser-backend"
+version = "0.1.0"
+description = "Enterprise Data Analysis Copilot Backend"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "pydantic>=2.8.0",
+    "pydantic-settings>=2.4.0",
+    "sqlalchemy>=2.0.0",
+    "asyncpg>=0.29.0",
+    "redis>=5.0.0",
+    "python-dotenv>=1.0.0",
+    "loguru>=0.7.0",
+    "alembic>=1.13.0",
+]
+
+[tool.uv]
+# expand uv config
