@@ -35,12 +35,9 @@ node_modules/
 Thumbs.db
 
 # Project Specific
-# 严禁上传真实的环境变量文件！
-backend/.env
-frontend/.env
-frontend/.env.local
+.env
 
 # 数据文件
-backend/data/
+./data/
 *.csv
 *.xlsx
