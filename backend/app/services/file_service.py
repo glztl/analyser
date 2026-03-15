@@ -1,7 +1,7 @@
 import os
 import uuid
 import shutil
-import aiofiles  # ✅ 确保导入 aiofiles
+import aiofiles
 from pathlib import Path
 from fastapi import UploadFile, HTTPException
 from app.core.config import settings
