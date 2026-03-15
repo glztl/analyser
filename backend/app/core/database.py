@@ -20,8 +20,7 @@ engine = create_async_engine(
 # 创建会话工厂
 # expire_on_commit=False: 事务提交后不失效对象属性，方便后续使用
 async_session_maker = async_sessionmaker(
-    engine=engine,
-    class_=AsyncSession,
+    bind=engine,
     expire_on_commit=False
 )
 

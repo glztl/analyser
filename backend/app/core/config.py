@@ -24,6 +24,18 @@ class Settings(BaseSettings):
     # 安全配置
     SECRET_KEY: str = "your-secret-key"
 
+    # 文件存储根目录
+    UPLOAD_DIR: str = "./uploads"
+
+    # 沙箱输出目录
+    SANDBOX_OUTPUT_DIR: str = "./outputs"
+
+    # 允许的文件扩展名
+    ALLOWED_EXTENSIONS: set[str] = {".csv", ".xlsx", ".xls"}
+
+    # 最大文件大小 (10MB)
+    MAX_FILE_SIZE: int = 10 * 1024 * 1024
+
     # 配置类内部设置
     model_config = SettingsConfigDict(
         env_file=".env",    # 读取.env文件

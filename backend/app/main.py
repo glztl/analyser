@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from app.core.config import settings
+from app.api import tasks
+from app.api import files
 
 # 创建 FastAPI 实例
 app = FastAPI(
@@ -7,6 +9,9 @@ app = FastAPI(
     version=settings.APP_VERSION,
     debug=settings.DEBUG
 )
+
+app.include_router(tasks.router)
+app.include_router(files.router)
 
 @app.get("/")
 async def root():
