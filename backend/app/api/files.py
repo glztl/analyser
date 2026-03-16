@@ -36,7 +36,7 @@ async def upload_file(file: UploadFile = File(...)):
 
     return FileUploadResponse(
         file_id=file_id,
-        filename=file.filename,
+        filename=file.filename or "unknown",
         file_path=file_path,
         size=file_size
     )

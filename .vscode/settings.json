@@ -36,5 +36,8 @@
 
   // 终端设置
   "terminal.integrated.defaultProfile.windows": "PowerShell",
-  "terminal.integrated.fontSize": 14
+  "terminal.integrated.fontSize": 14,
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  }
 }

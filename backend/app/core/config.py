@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     # LLM API 配置
     LLM_API_KEY: str = "your-llm-api-key"
     LLM_MODEL: str = "gpt-4o-mini"
+    LLM_BASE_URL: str = "https://api.openai.com/v1"
+    LLM_MAX_TOKENS: int = 4096
+    AGENT_MAX_RETRIES: int = 3 # Agent 自我修正最大次数
+
 
     # 安全配置
     SECRET_KEY: str = "your-secret-key"
