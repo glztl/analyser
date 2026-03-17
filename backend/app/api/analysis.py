@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.models.task import AnalysisTask, TaskStatus
 from app.services.agent_service import AgentService
-from pydantic import BaseModel  # 导入你的沙箱
+from pydantic import BaseModel
 from app.services.sandbox_service import SandboxService
 from typing import Optional, Dict, Any
 import os
@@ -32,10 +32,10 @@ class AnalysisStatusResponse(BaseModel):
     task_id: int
     status: str  # pending | processing | completed | failed
     message: str | None = None  # 错误或完成消息
-    result_path: str | None = None  # 图表路径（如果有）
+    result_path: str | None = None  # 图表路径
 
     class Config:
-        from_attributes = True  # SQLAlchemy 2.0 必需
+        from_attributes = True
 
 
 @router.post("/start", response_model=AnalysisResponse)
@@ -100,9 +100,6 @@ async def execute_analysis_task(task_id: int, db: AsyncSession = Depends(get_db)
     if not task.code_snapshot:
         raise HTTPException(status_code=400, detail="No code to execute")
 
-    # ========================
-    # 🔥 绝对路径修复（已内置）
-    # ========================
     from pathlib import Path
 
     base_dir = Path(__file__).parent.parent.parent
@@ -119,7 +116,7 @@ async def execute_analysis_task(task_id: int, db: AsyncSession = Depends(get_db)
             task.result_path = sandbox_result["output"].get(
                 "chart_path", ""
             )  # 图片路径
-            task.error_message = ""  # 不能用 None
+            task.error_message = ""
         else:
             task.status = TaskStatus.FAILED
             task.error_message = "\n".join(sandbox_result["errors"])
@@ -128,9 +125,9 @@ async def execute_analysis_task(task_id: int, db: AsyncSession = Depends(get_db)
 
         return AnalysisResponse(
             task_id=task_id,
-            status=task.status.value,  # 必须加 .value！
+            status=task.status.value,
             message=task.error_message or "Execution success",
-            output=sandbox_result["output"],  # 👈 这里会返回 {result, chart_path}
+            output=sandbox_result["output"],
         )
 
     except Exception as e:
