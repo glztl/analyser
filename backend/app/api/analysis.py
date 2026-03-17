@@ -75,7 +75,7 @@ async def get_analysis_status(task_id: int, db: AsyncSession = Depends(get_db)):
     task = await db.get(AnalysisTask, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    # ✅ 根据状态生成友好消息
+
     message = None
     if task.status == "failed":
         message = task.error_message
