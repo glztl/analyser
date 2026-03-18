@@ -1,3 +1,4 @@
+# app/services/agent_service.py
 from app.services.llm_service import llm_service
 from app.services.sandbox_service import SandboxService
 from app.core.prompts import SYSTEM_PROMPT, get_error_fix_prompt
@@ -83,10 +84,8 @@ class AgentService:
                 if execution_result.get("success"):
                     logger.info(f"Task {task_id}: Execution successful!")
                     task.status = TaskStatus.COMPLETED
-                    # 保存结果路径 (如果沙箱返回了图表路径)
-                    if execution_result.get("output", {}).get("chart_path"):
-                        task.result_path = execution_result["output"]["chart_path"]
-                        await db.commit()
+                    task.result_path = execution_result["output"].get("chart_path", "")
+                    await db.commit()
                     return {
                         "success": True,
                         "result": execution_result.get("output", {}),

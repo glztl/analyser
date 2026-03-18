@@ -18,7 +18,12 @@ class FileService:
         """
         验证文件类型和大小
         """
-        file_ext = Path(file.filename).suffix.lower()
+        if not file.filename:
+            raise HTTPException(
+                status_code=400,
+                detail="文件名不能为空。",
+            )
+        file_ext = Path(file.filename or "").suffix.lower()
         if file_ext not in settings.ALLOWED_EXTENSIONS:
             raise HTTPException(
                 status_code=400,
@@ -34,7 +39,7 @@ class FileService:
         FileService.validate_file(file)
 
         # 2. 生成唯一文件名
-        file_ext = Path(file.filename).suffix.lower()
+        file_ext = Path(file.filename or "").suffix.lower()
         unique_filename = f"{uuid.uuid4().hex}{file_ext}"
 
         # 3. 创建用户目录 (按用户隔离文件)
@@ -55,12 +60,11 @@ class FileService:
                     detail=f"文件大小超过限制 ({settings.MAX_FILE_SIZE} bytes)",
                 )
 
-            
             async with aiofiles.open(file_path, "wb") as out_file:
                 await out_file.write(content)
 
-            
-            return str(file_path)
+            # return str(file_path)
+            return str(Path(file_path).resolve())
 
         except HTTPException:
             # 重新抛出 HTTP 异常

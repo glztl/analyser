@@ -5,7 +5,6 @@ import sys
 import logging
 import ast
 from pathlib import Path
-from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -18,63 +17,39 @@ class SandboxService:
                 work_dir = Path(work_dir)
                 script_path = work_dir / "execute.py"
 
-                output_dir = Path(settings.SANDBOX_OUTPUT_DIR)
-                output_dir.mkdir(exist_ok=True)
-
-                # ✅ 最终版脚本（Agg 后端 + 绝对路径）
+                abs_file_path = Path(file_path).as_posix() if file_path else ""
                 script_content = f'''
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 import pandas as pd
-import os
-
-plt.rcParams['font.sans-serif'] = ['SimHei', 'Microsoft YaHei', 'WenQuanYi Micro Hei']
-plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
-plt.rcParams['font.family'] = 'sans-serif'
-
-# 绝对路径
-OUTPUT_DIR = r"{output_dir.absolute().as_posix()}"
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-
-def save_chart(filename):
-    full_path = os.path.abspath(os.path.join(OUTPUT_DIR, filename))
-    plt.savefig(full_path, bbox_inches='tight', dpi=150)
-    plt.close()
-    return full_path
-
-file_path = r"{file_path}"
-df = pd.read_excel(file_path)
+import json
 
 # 执行用户代码
+file_path = r"{abs_file_path}"
 user_code = {code!r}
-sandbox_vars = {{
-    "pd": pd,
-    "plt": plt,
-    "df": df,
-    "file_path": file_path,
-    "save_chart": save_chart
-}}
-exec(user_code, sandbox_vars)
 
-# 输出结果
+sandbox_vars = {{}}
+exec(user_code, {{
+    "pd": pd,
+    "file_path": file_path,
+    "__name__": "__main__"
+}}, sandbox_vars)
+
 result = sandbox_vars.get("result", "执行成功")
-chart_path = sandbox_vars.get("chart_path", "")
-print("__SANDBOX_RESULT__", {{"result": result, "chart_path": chart_path}})
+chart_json = sandbox_vars.get("chart_json", {{}})
+
+print("__SANDBOX_RESULT__", {{"result": result, "chart_json": chart_json}})
 '''
 
                 script_path.write_text(script_content, encoding="utf-8")
 
-                # 执行
                 result = subprocess.run(
                     [sys.executable, str(script_path)],
                     capture_output=True,
                     text=True,
-                    timeout=30,
+                    timeout=20,
                     cwd=str(work_dir),
                 )
 
-                output = {"result": "", "chart_path": ""}
+                output = {"result": "", "chart_json": {}}
                 for line in result.stdout.splitlines():
                     if "__SANDBOX_RESULT__" in line:
                         output = ast.literal_eval(
