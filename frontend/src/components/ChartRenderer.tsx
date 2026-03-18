@@ -1,28 +1,67 @@
 import React, { useEffect, useRef, memo } from 'react';
 import * as echarts from 'echarts';
 
+// 深色主题配置
+const DARK_THEME = {
+    backgroundColor: 'transparent',
+    textStyle: { color: '#e4e4e7' },
+    title: { textStyle: { color: '#e4e4e7' } },
+    legend: { textStyle: { color: '#a1a1aa' } },
+    tooltip: {
+        backgroundColor: 'rgba(15, 15, 20, 0.9)',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
+        textStyle: { color: '#e4e4e7' },
+    },
+    xAxis: {
+        axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.1)' } },
+        axisLabel: { color: '#a1a1aa' },
+        splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.05)' } },
+    },
+    yAxis: {
+        axisLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.1)' } },
+        axisLabel: { color: '#a1a1aa' },
+        splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.05)' } },
+    },
+    grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        containLabel: true,
+    },
+};
+
 interface ChartRendererProps {
     option: echarts.EChartsOption;
     height?: string;
+    theme?: 'dark' | 'light';
 }
 
-const ChartRenderer: React.FC<ChartRendererProps> = memo(({ option, height = '400px' }) => {
+const ChartRenderer: React.FC<ChartRendererProps> = memo(({
+    option,
+    height = '300px',
+    theme = 'dark'
+}) => {
     const chartRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (!chartRef.current) return;
 
-        // 初始化图表
-        const chart = echarts.init(chartRef.current);
+        // 合并主题配置
+        const finalOption = {
+            ...DARK_THEME,
+            ...option,
+            tooltip: { ...DARK_THEME.tooltip, ...option.tooltip },
+            xAxis: { ...DARK_THEME.xAxis, ...option.xAxis },
+            yAxis: { ...DARK_THEME.yAxis, ...option.yAxis },
+        };
 
-        // 设置配置
-        chart.setOption(option);
+        const chart = echarts.init(chartRef.current, undefined, { renderer: 'svg' });
+        chart.setOption(finalOption);
 
-        // 响应式 resize
+        // 响应式
         const handleResize = () => chart.resize();
         window.addEventListener('resize', handleResize);
 
-        // 清理
         return () => {
             window.removeEventListener('resize', handleResize);
             chart.dispose();
@@ -33,7 +72,7 @@ const ChartRenderer: React.FC<ChartRendererProps> = memo(({ option, height = '40
         <div
             ref={chartRef}
             style={{ width: '100%', height }}
-            className="rounded-lg bg-white"
+            className="echarts-container"
         />
     );
 });
