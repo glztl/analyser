@@ -44,6 +44,9 @@ function App() {
       console.log('[Upload] API Response:', uploadResult);
       console.log('[Upload] file_path from API:', uploadResult.file_path);
 
+      const analysisResult = await analyserAPI.analyzeFile(uploadResult.file_path);
+      console.log('[File Analysis]', analysisResult)
+
       // 更新 state
       setSelectedFile(file);
       setFilePath(uploadResult.file_path);
@@ -55,6 +58,13 @@ function App() {
         id: `file-${Date.now()}`,
         role: 'agent',
         content: `✅ 已加载 **${uploadResult.filename}** (${(uploadResult.size / 1024 / 1024).toFixed(2)} MB)`,
+        meta: {
+          file_info: analysisResult.file_info,
+          structure: analysisResult.structure,
+          quality: analysisResult.quality,
+          strategy: analysisResult.strategy,
+        },
+        preview: analysisResult.preview,
       }]);
 
     } catch (error: any) {
@@ -361,8 +371,8 @@ function App() {
                   onClick={handleSend}
                   disabled={!inputValue.trim() || !filePath || isAnalyzing}
                   className={`p-3 rounded-xl transition-all flex items-center justify-center ${inputValue.trim() && filePath && !isAnalyzing
-                      ? 'btn-primary text-white shadow-lg'
-                      : 'bg-white/5 text-gray-500 cursor-not-allowed'
+                    ? 'btn-primary text-white shadow-lg'
+                    : 'bg-white/5 text-gray-500 cursor-not-allowed'
                     }`}
                   title={!filePath ? "请先上传文件" : !inputValue.trim() ? "请输入分析需求" : "发送"}
                 >

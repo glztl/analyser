@@ -1,7 +1,7 @@
 """
 记录用户提交的每次数据分析任务
 """
-
+# app/models/task.py
 from sqlalchemy import String, Integer, Text, Enum
 from sqlalchemy.orm import Mapped, mapped_column
 from enum import Enum as PyEnum

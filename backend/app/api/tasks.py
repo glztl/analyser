@@ -5,7 +5,9 @@ from app.core.database import get_db
 from app.models.task import AnalysisTask, TaskStatus
 from pydantic import BaseModel, ConfigDict
 from app.services.agent_service import AgentService
+from app.services.file_analyzer import FileAnalyzer
 from typing import Optional, Dict, Any
+import json
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
@@ -30,21 +32,52 @@ class TaskResponse(BaseModel):
 
 @router.post("/", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
 async def create_task(task_data: TaskCreate, db: AsyncSession = Depends(get_db)):
-    # 1. 创建任务
+    # 分析文件结构
+    file_analysis = FileAnalyzer.analyze_file(task_data.file_path)
+
+    if not file_analysis.get("success"):
+        # 文件分析失败，直接返回错误信息
+        return TaskResponse(
+            id=0,
+            query=task_data.query,
+            status=TaskStatus.FAILED.value,
+            file_path=task_data.file_path,
+            result_path=None,
+            error_message=file_analysis.get("error", "文件分析失败"),
+            output=None,
+        )
+
+    # 创建任务
     new_task = AnalysisTask(
-        query=task_data.query, file_path=task_data.file_path, status=TaskStatus.PENDING
+        query=task_data.query,
+        file_path=task_data.file_path,
+        status=TaskStatus.PENDING,
+        # 保存文件分析结果
+        code_snapshot=json.dumps(file_analysis, ensure_ascii=False, default=str)[:1000],
     )
     db.add(new_task)
     await db.commit()
     await db.refresh(new_task)
 
-    # 2. 🔥 同步执行，等待AI分析+沙箱执行完成
-    analysis_result = await AgentService.run_analysis(task_id=new_task.id, db=db)
+    # 执行分析
+    result = await AgentService.run_analysis(
+        new_task.id,
+        db,
+        file_analysis=file_analysis,
+    )
 
-    # 3. 刷新最新状态
-    await db.refresh(new_task)
+    # 返回结果
+    output = None
+    if result.get("success") and result.get("output"):
+        output = result["output"]
+        # 添加文件结构元数据到输出
+        output["metadata"] = {
+            "file_info": file_analysis.get("file_info"),
+            "structure": file_analysis.get("structure"),
+            "quality": file_analysis.get("quality"),
+            "strategy": file_analysis.get("strategy"),
+        }
 
-    # 4. 🔥 构造返回值，包含 output
     return TaskResponse(
         id=new_task.id,
         query=new_task.query,
@@ -52,7 +85,7 @@ async def create_task(task_data: TaskCreate, db: AsyncSession = Depends(get_db))
         file_path=new_task.file_path,
         result_path=new_task.result_path,
         error_message=new_task.error_message,
-        output=analysis_result.get("result", {}),  # 🔥 返回沙箱的输出
+        output=output,
     )
 
 

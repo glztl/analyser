@@ -70,6 +70,15 @@ export const analyserAPI = {
         await api.post('/analysis/start', { task_id: taskId });
     },
 
+    analyzeFile: async (filePath: string): Promise<any> => {
+        const response = await fetch(`http://localhost:8000/files/analyze?file_path=${encodeURIComponent(filePath)}`);
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || '分析失败');
+        }
+        return response.json();
+    },
+
     // 轮询任务状态（直到完成或失败）
     pollTaskStatus: async (
         taskId: number,

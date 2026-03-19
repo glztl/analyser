@@ -1,5 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from app.services.file_service import FileService
+from app.services.file_analyzer import FileAnalyzer
 from pydantic import BaseModel
 from pathlib import Path
 
@@ -38,5 +39,21 @@ async def upload_file(file: UploadFile = File(...)):
         file_id=file_id,
         filename=file.filename or "unknown",
         file_path=file_path,
-        size=file_size
+        size=file_size,
     )
+
+
+@router.get("/analyze")
+async def analyze_file(file_path: str):
+    """分析文件结构"""
+    if not file_path:
+        raise HTTPException(status_code=400, detail="file_path required")
+
+    analysis = FileAnalyzer.analyze_file(file_path)
+
+    if not analysis.get("success"):
+        raise HTTPException(
+            status_code=400, detail=analysis.get("error", "文件分析失败")
+        )
+
+    return analysis
