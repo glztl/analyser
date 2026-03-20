@@ -38,8 +38,7 @@ interface ChartRendererProps {
 
 const ChartRenderer: React.FC<ChartRendererProps> = memo(({
     option,
-    height = '300px',
-    theme = 'dark'
+    height = '300px'
 }) => {
     const chartRef = useRef<HTMLDivElement>(null);
 
