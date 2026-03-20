@@ -16,7 +16,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uvx /bin/uvx
 # 复制依赖文件
 COPY pyproject.toml uv.lock ./
 
-# ✅ 创建虚拟环境到标准位置 /opt/venv（关键！）
+# ✅ 关键：显式指定虚拟环境路径为 /opt/venv
 RUN /bin/uv venv /opt/venv
 
 # ✅ 使用虚拟环境的 pip 安装依赖（路径必须匹配）
