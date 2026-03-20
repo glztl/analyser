@@ -6,20 +6,19 @@ WORKDIR /app
 # ✅ 1. 先复制 package 文件（利用 Docker 缓存）
 COPY package*.json ./
 
-# ✅ 2. 安装依赖（生产环境只需要 production dependencies）
-RUN npm ci --only=production
+# ✅ 2. 安装所有依赖（包括 devDependencies，因为构建需要 tsc/vite）
+RUN npm ci
 
 # ✅ 3. 复制所有源文件
 COPY . .
 
-# ✅ 4. 执行构建
+# ✅ 4. 执行构建（生成 dist/）
 RUN npm run build
 
 # ========== Stage 2: 生产运行 ==========
 FROM nginx:alpine-slim
 
-
-# ✅ 复制构建产物
+# ✅ 复制构建产物（只复制最终的 dist，不复制源码）
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 # ✅ 健康检查
