@@ -23,7 +23,7 @@ function App() {
 
   const [inputValue, setInputValue] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [setCurrentTaskId] = useState<number | null>(null);
+  const [currentTaskId, setCurrentTaskId] = useState<number | null>(null);
 
   // ========== 处理新对话 ==========
   const handleNewChat = useCallback(() => {
