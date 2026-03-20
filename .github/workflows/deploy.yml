@@ -5,8 +5,10 @@ on:
 
 jobs:
   test:
-    name: 🔧 Test
+    name: 🚀 Deploy
     runs-on: ubuntu-latest
+    # ✅ 保留这行
+    environment: production
     
     steps:
       - name: 📥 Checkout
