@@ -97,7 +97,7 @@ jobs:
         run: |
           ssh ${{ secrets.TENCENT_USER }}@${{ secrets.TENCENT_HOST }} << 'EOF'
             set -e
-            cd /opt/analyser
+            cd /opt/apps/analyser
             
             echo "📦 Pulling latest code..."
             git pull origin main
