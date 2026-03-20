@@ -1,215 +1,30 @@
-name: 🚀 Deploy to Tencent Cloud
+name: 🚀 Deploy Test
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - '**.md'
-      - 'docs/**'
-  pull_request:
-    branches: [main]
-  workflow_dispatch:  # 允许手动触发
-
-# 并发控制：同一分支只运行一个部署
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  workflow_dispatch:  # 只保留手动触发
 
 jobs:
-  # ========== 1. 代码质量检查 ==========
-  quality-check:
-    name: 🔍 Quality Check
+  test:
+    name: 🔧 Test
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     
     steps:
-      - name: 📥 Checkout code
+      - name: 📥 Checkout
         uses: actions/checkout@v4
-
-      - name: 🐍 Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-          cache: 'pip'
-
-      - name: 📦 Install uv
+      
+      - name: 🖨️ Print Info
         run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: 🧪 Backend tests
-        working-directory: ./backend
-        run: |
-          uv sync --dev
-          uv run pytest tests/ -v --cov=app --cov-report=xml
-
-      - name: 📊 Upload coverage
-        uses: codecov/codecov-action@v4
-        with:
-          file: ./backend/coverage.xml
-          flags: backend
-
-      - name: ⚛️ Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: 🎨 Frontend lint & build
-        working-directory: ./frontend
-        run: |
-          npm ci
-          npm run lint
-          npm run build
-
-  # ========== 2. 构建并推送镜像 ==========
-  build-and-push:
-    name: 🏗️ Build & Push Images
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: quality-check
-    
-    permissions:
-      contents: read
-      packages: write  # 推送镜像到 GHCR
-    
-    steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4
-
-      - name: 🔐 Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: 🏷️ Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend
-          tags: |
-            type=sha,prefix=,format=long
-            type=ref,event=branch
-            latest
-
-      # ========== 构建后端镜像 ==========
-      - name: 🐍 Build backend image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./backend
-          file: ./backend/Dockerfile.prod
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}-backend
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            BUILDKIT_INLINE_CACHE=1
-
-      # ========== 构建前端镜像 ==========
-      - name: ⚛️ Build frontend image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          file: ./frontend/Dockerfile.prod
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}-frontend
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # ========== 3. 部署到服务器 ==========
-  deploy:
-    name: 🚀 Deploy to Server
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: build-and-push
-    environment: production
-    
-    steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4
-
-      - name: 🔑 Setup SSH key
+          echo "✅ Workflow triggered!"
+          echo "Branch: ${{ github.ref }}"
+          echo "Event: ${{ github.event_name }}"
+      
+      - name: 🔑 Test SSH
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.TENCENT_SSH_KEY }}
-
-      - name: 📋 Add server to known_hosts
+      
+      - name: 📡 Connect
         run: |
           ssh-keyscan -H ${{ secrets.TENCENT_HOST }} >> ~/.ssh/known_hosts
-
-      - name: 📦 Prepare deployment files
-        run: |
-          # 创建 .env 文件（从 GitHub Secrets）
-          cat > .env.prod << EOF
-          DB_USER=${{ secrets.DB_USER }}
-          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-          DB_NAME=${{ secrets.DB_NAME }}
-          DATABASE_URL=${{ secrets.DATABASE_URL }}
-          REDIS_URL=${{ secrets.REDIS_URL }}
-          LLM_API_KEY=${{ secrets.LLM_API_KEY }}
-          LLM_MODEL=${{ secrets.LLM_MODEL }}
-          SECRET_KEY=${{ secrets.SECRET_KEY }}
-          EOF
-          
-          # 复制部署文件
-          cp docker-compose.prod.yml docker-compose.yml
-          cp .env.prod .env
-
-      - name: 🚀 Deploy via SSH
-        run: |
-          ssh ${{ secrets.TENCENT_USER }}@${{ secrets.TENCENT_HOST }} << 'EOF'
-            set -e
-            
-            echo "📦 Pulling latest code..."
-            cd /opt/analyser
-            git pull origin main
-            
-            echo "🔐 Loading environment..."
-            cp /opt/analyser/.env.prod /opt/analyser/.env
-            
-            echo "🏗️ Building and starting services..."
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d --build
-            
-            echo "🔄 Running database migrations..."
-            docker compose -f docker-compose.prod.yml run --rm migrate
-            
-            echo "🧹 Cleaning up old images..."
-            docker image prune -f --filter "label=org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}"
-            
-            echo "✅ Deployment complete!"
-            docker compose -f docker-compose.prod.yml ps
-          EOF
-
-      - name: 🏓 Health check
-        run: |
-          echo "⏳ Waiting for services to be healthy..."
-          sleep 30
-          
-          # 检查前端
-          curl -f https://${{ secrets.DOMAIN }}/health || exit 1
-          
-          # 检查后端
-          curl -f https://${{ secrets.DOMAIN }}/api/health || exit 1
-          
-          echo "✅ All services healthy!"
-
-      - name: 📢 Notify (optional)
-        if: always()
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ job.status }}
-          fields: repo,message,commit,author,action,workflow,job,took
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+          ssh -o StrictHostKeyChecking=no ${{ secrets.TENCENT_USER }}@${{ secrets.TENCENT_HOST }} \
+            "echo '✅ Connected!' && docker ps --format 'table {{.Names}}\t{{.Status}}'"
