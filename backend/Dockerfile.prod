@@ -9,17 +9,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# 安装 uv
+# 安装 uv（从官方镜像复制）
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uvx /bin/uvx
 
 # 复制依赖文件
 COPY pyproject.toml uv.lock ./
 
-# ✅ 创建虚拟环境到标准位置 /opt/venv
+# ✅ 创建虚拟环境到标准位置 /opt/venv（关键！）
 RUN /bin/uv venv /opt/venv
 
-# ✅ 使用虚拟环境的 pip 安装依赖
+# ✅ 使用虚拟环境的 pip 安装依赖（路径必须匹配）
 RUN /opt/venv/bin/pip install -r pyproject.toml
 
 # ========== Stage 2: 运行环境 ==========
@@ -33,7 +33,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -m -u 1000 appuser
 
-# ✅ 复制虚拟环境（路径必须一致）
+# ✅ 复制虚拟环境（路径必须与 builder 阶段一致）
 COPY --from=builder /opt/venv /opt/venv
 
 # ✅ 复制应用代码
@@ -42,7 +42,7 @@ COPY --chown=appuser:appuser . .
 # ✅ 设置权限
 RUN chown -R appuser:appuser /app /opt/venv
 
-# ✅ 关键：设置正确的 PATH，指向虚拟环境的 bin
+# ✅ 关键：设置 PATH 指向虚拟环境的 bin
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
