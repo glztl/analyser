@@ -97,10 +97,29 @@ jobs:
         run: |
           ssh ${{ secrets.TENCENT_USER }}@${{ secrets.TENCENT_HOST }} << 'EOF'
             set -e
-            cd /opt/apps/analyser
+            cd /opt/apps/analyser  # ✅ 确认你的实际路径
             
-            echo "📦 Pulling latest code..."
-            git pull origin main
+            echo "📦 Pulling latest code via SSH..."
+            
+            # ✅ 确保使用 SSH remote（首次部署时设置）
+            if ! git remote get-url origin | grep -q "git@github.com"; then
+              echo "⚠️  Setting SSH remote URL..."
+              git remote set-url origin git@github.com:glztl/analyser.git
+            fi
+            
+            # ✅ 添加重试逻辑，处理网络波动
+            for i in 1 2 3; do
+              if git pull origin main; then
+                echo "✅ Code pulled successfully"
+                break
+              elif [ $i -eq 3 ]; then
+                echo "❌ Git pull failed after 3 attempts"
+                exit 1
+              else
+                echo "⚠️  Git pull failed, retrying ($i/3) in 5s..."
+                sleep 5
+              fi
+            done
             
             echo "🔐 Loading environment..."
             if [ ! -f .env ]; then
@@ -119,7 +138,7 @@ jobs:
             sleep 45
             
             echo "🧹 Cleaning up old images..."
-            docker image prune -f --filter "label=org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}"
+            docker image prune -f --filter "label=org.opencontainers.image.source=https://github.com/glztl/analyser"
             
             echo "✅ Deployment complete!"
             docker compose -f docker-compose.prod.yml ps
