@@ -1,5 +1,5 @@
 # ========== Stage 1: 构建依赖 ==========
-FROM python:3.12-slim AS builder
+FROM python:3.12-slim as builder
 
 WORKDIR /app
 
@@ -7,20 +7,19 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     gcc \
+    libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 安装 uv（从官方镜像复制）
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uvx /bin/uvx
+# 安装 uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# 复制依赖文件
+# 复制项目文件（用于依赖解析）
 COPY pyproject.toml uv.lock ./
+# 如果需要安装本地包，也要复制源码
+COPY app/ ./app/
 
-# ✅ 关键：显式指定虚拟环境路径为 /opt/venv
-RUN /bin/uv venv /opt/venv
-
-# ✅ 使用虚拟环境的 pip 安装依赖（路径必须匹配）
-RUN /opt/venv/bin/pip install -r pyproject.toml
+# ✅ 正确：安装当前目录的项目（读取 pyproject.toml）
+RUN uv pip install --system .
 
 # ========== Stage 2: 运行环境 ==========
 FROM python:3.12-slim
@@ -30,34 +29,34 @@ WORKDIR /app
 # 安装运行时依赖
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
+    libpq5 \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -m -u 1000 appuser
 
-# ✅ 复制虚拟环境（路径必须与 builder 阶段一致）
-COPY --from=builder /opt/venv /opt/venv
+# 从 builder 复制已安装的包
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
 
-# ✅ 复制应用代码
-COPY --chown=appuser:appuser . .
+# 复制应用代码
+COPY . .
 
-# ✅ 设置权限
-RUN chown -R appuser:appuser /app /opt/venv
-
-# ✅ 关键：设置 PATH 指向虚拟环境的 bin
-ENV PATH="/opt/venv/bin:$PATH" \
-    PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    VIRTUAL_ENV=/opt/venv
-
-# 切换到非 root 用户
+# 设置权限
+RUN chown -R appuser:appuser /app
 USER appuser
+
+# 环境变量
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/usr/local/bin:$PATH"
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# ✅ 启动命令（gunicorn 现在能在 PATH 中找到）
+# 启动命令
 CMD ["gunicorn", "app.main:app", \
      "--workers", "2", \
      "--worker-class", "uvicorn.workers.UvicornWorker", \
      "--bind", "0.0.0.0:8000", \
-     "--timeout", "120"]
+     "--timeout", "120", \
+     "--max-requests", "1000"]
