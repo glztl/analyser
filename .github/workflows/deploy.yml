@@ -101,25 +101,22 @@ jobs:
             
             echo "📦 Pulling latest code via SSH..."
             
-            # ✅ 确保使用 SSH remote（首次部署时设置）
-            if ! git remote get-url origin | grep -q "git@github.com"; then
+            # ✅ 修复 1: 兼容旧版 Git，使用 -v 代替 get-url
+            if ! git remote -v | grep -q "git@github.com:glztl/analyser.git"; then
               echo "⚠️  Setting SSH remote URL..."
               git remote set-url origin git@github.com:glztl/analyser.git
             fi
             
-            # ✅ 添加重试逻辑，处理网络波动
-            for i in 1 2 3; do
-              if git pull origin main; then
-                echo "✅ Code pulled successfully"
-                break
-              elif [ $i -eq 3 ]; then
-                echo "❌ Git pull failed after 3 attempts"
-                exit 1
-              else
-                echo "⚠️  Git pull failed, retrying ($i/3) in 5s..."
-                sleep 5
-              fi
-            done
+            # ✅ 修复 2: 处理本地未提交更改 - 强制重置到远程状态
+            echo "🔄 Resetting local changes to match remote..."
+            git fetch origin main
+            git reset --hard origin/main  # ✅ 强制覆盖本地修改
+            git clean -fd  # ✅ 删除未跟踪的文件（如新创建的 docker-compose.prod.yml）
+            
+            # ✅ 修复 3: 确保拉取最新代码
+            git pull origin main
+            
+            echo "✅ Code synced successfully"
             
             echo "🔐 Loading environment..."
             if [ ! -f .env ]; then
@@ -143,7 +140,6 @@ jobs:
             echo "✅ Deployment complete!"
             docker compose -f docker-compose.prod.yml ps
           EOF
-
       - name: 🏓 Health check
         run: |
           echo "⏳ Waiting for services to be healthy..."
